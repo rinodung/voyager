@@ -6,12 +6,12 @@
     <meta name="robots" content="none" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0, minimal-ui">
     <meta name="description" content="admin login">
-    <title>Admin - {{ Voyager::setting("title") }}</title>
+    <title>Admin - {{ Voyager::setting("admin.title") }}</title>
     <link rel="stylesheet" href="{{ voyager_asset('css/app.css') }}">
     <style>
         body {
-            background-image:url('{{ Voyager::image( Voyager::setting("admin_bg_image"), config('voyager.assets_path') . "/images/bg.jpg" ) }}');
-            background-color: {{ Voyager::setting("admin_bg_color", "#FFFFFF" ) }};
+            background-image:url('{{ Voyager::image( Voyager::setting("admin.bg_image"), voyager_asset("images/bg.jpg") ) }}');
+            background-color: {{ Voyager::setting("admin.bg_color", "#FFFFFF" ) }};
         }
         .login-sidebar{
             border-top:5px solid {{ config('voyager.primary_color','#22A7F0') }};
@@ -19,11 +19,11 @@
         @media (max-width: 767px) {
             .login-sidebar {
                 border-top:0px !important;
+                border-left:5px solid {{ config('voyager.primary_color','#22A7F0') }};
             }
         }
-        .login-sidebar:after {
-            background: linear-gradient(-135deg, {{config('voyager.login.gradient_a','#ffffff')}}, {{config('voyager.login.gradient_b','#ffffff')}});
-            background: -webkit-linear-gradient(-135deg, {{config('voyager.login.gradient_a','#ffffff')}}, {{config('voyager.login.gradient_b','#ffffff')}});
+        body.login .form-group-default.focused{
+            border-color:{{ config('voyager.primary_color','#22A7F0') }};
         }
         .login-button, .bar:before, .bar:after{
             background:{{ config('voyager.primary_color','#22A7F0') }};
@@ -40,15 +40,15 @@
             <div class="clearfix">
                 <div class="col-sm-12 col-md-10 col-md-offset-2">
                     <div class="logo-title-container">
-                        <?php $admin_logo_img = Voyager::setting('admin_icon_image', ''); ?>
+                        <?php $admin_logo_img = Voyager::setting('admin.icon_image', ''); ?>
                         @if($admin_logo_img == '')
                         <img class="img-responsive pull-left logo hidden-xs animated fadeIn" src="{{ voyager_asset('images/logo-icon-light.png') }}" alt="Logo Icon">
                         @else
                         <img class="img-responsive pull-left logo hidden-xs animated fadeIn" src="{{ Voyager::image($admin_logo_img) }}" alt="Logo Icon">
                         @endif
                         <div class="copy animated fadeIn">
-                            <h1>{{ Voyager::setting('admin_title', 'Voyager') }}</h1>
-                            <p>{{ Voyager::setting('admin_description', __('voyager.login.welcome')) }}</p>
+                            <h1>{{ Voyager::setting('admin.title', 'Voyager') }}</h1>
+                            <p>{{ Voyager::setting('admin.description', __('voyager.login.welcome')) }}</p>
                         </div>
                     </div> <!-- .logo-title-container -->
                 </div>
@@ -56,30 +56,32 @@
         </div>
 
         <div class="col-xs-12 col-sm-5 col-md-4 login-sidebar">
-
+            
             <div class="login-container">
-                <h2>{{ __('voyager.login.signin_below') }}</h2>
-                <form action="{{ route('voyager.login') }}" method="POST">
-                {{ csrf_field() }}
-                <div class="group">
-                  <input type="text" name="email" value="{{ old('email') }}" required>
-                  <span class="highlight"></span>
-                  <span class="bar"></span>
-                  <label><i class="glyphicon glyphicon-user"></i><span class="span-input"> {{ __('voyager.generic.email') }}</span></label>
-                </div>
-
-                <div class="group">
-                  <input type="password" name="password" required>
-                  <span class="highlight"></span>
-                  <span class="bar"></span>
-                  <label><i class="glyphicon glyphicon-lock"></i><span class="span-input"> {{ __('voyager.generic.password') }}</span></label>
-                </div>
                 
+                <p>{{ __('voyager.login.signin_below') }}</p>
+
+                <form action="{{ route('voyager.login') }}" method="POST">
+                    {{ csrf_field() }}
+                    <div class="form-group form-group-default" id="emailGroup">
+                        <label>{{ __('voyager.generic.email') }}</label>
+                        <div class="controls">
+                            <input type="text" name="email" id="email" value="{{ old('email') }}" placeholder="{{ __('voyager.generic.email') }}" class="form-control" required>
+                         </div>
+                    </div>
+
+                    <div class="form-group form-group-default" id="passwordGroup">
+                        <label>{{ __('voyager.generic.password') }}</label>
+                        <div class="controls">
+                            <input type="password" name="password" placeholder="{{ __('voyager.generic.password') }}" class="form-control" required>
+                        </div>
+                    </div>
+
                     <button type="submit" class="btn btn-block login-button">
-                        <span class="signingin hidden"><span class="voyager-refresh"></span> {{ __('voyager.login.loginin') }}...</span>
+                        <span class="signingin hidden"><span class="voyager-refresh"></span> {{ __('voyager.login.loggingin') }}...</span>
                         <span class="signin">{{ __('voyager.generic.login') }}</span>
                     </button>
-                    
+
               </form>
 
               <div style="clear:both"></div>
@@ -102,6 +104,8 @@
 <script>
     var btn = document.querySelector('button[type="submit"]');
     var form = document.forms[0];
+    var email = document.querySelector('[name="email"]');
+    var password = document.querySelector('[name="password"]');
     btn.addEventListener('click', function(ev){
         if (form.checkValidity()) {
             btn.querySelector('.signingin').className = 'signingin';
@@ -110,7 +114,24 @@
             ev.preventDefault();
         }
     });
-    document.getElementById('email').focus();
+    email.focus();
+    document.getElementById('emailGroup').classList.add("focused");
+    
+    // Focus events for email and password fields
+    email.addEventListener('focusin', function(e){
+        document.getElementById('emailGroup').classList.add("focused");
+    });
+    email.addEventListener('focusout', function(e){
+       document.getElementById('emailGroup').classList.remove("focused");
+    });
+
+    password.addEventListener('focusin', function(e){
+        document.getElementById('passwordGroup').classList.add("focused");
+    });
+    password.addEventListener('focusout', function(e){
+       document.getElementById('passwordGroup').classList.remove("focused");
+    });
+
 </script>
 </body>
 </html>

@@ -63,7 +63,7 @@
                                 @foreach(TCG\Voyager\Models\Permission::all()->groupBy('table_name') as $table => $permission)
                                     <li>
                                         <input type="checkbox" id="{{$table}}" class="permission-group">
-                                        <label for="{{$table}}"><strong>{{ucwords($table)}}</strong></label>
+                                        <label for="{{$table}}"><strong>{{title_case(str_replace('_',' ', $table))}}</strong></label>
                                         <ul>
                                             @foreach($permission as $perm)
                                                 <li>
@@ -132,6 +132,4 @@
             });
         });
     </script>
-    <script src="{{ voyager_asset('lib/js/tinymce/tinymce.min.js') }}"></script>
-    <script src="{{ voyager_asset('js/voyager_tinymce.js') }}"></script>
 @stop

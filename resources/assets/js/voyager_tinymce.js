@@ -1,7 +1,3 @@
-function setImageValue(url){
-  $('.mce-btn.mce-open').parent().find('.mce-textbox').val(url);
-}
-
 $(document).ready(function(){
 
   $.ajaxSetup({
@@ -16,7 +12,7 @@ $(document).ready(function(){
     skin: 'voyager',
     min_height: 600,
     resize: 'vertical',
-    plugins: 'link, image, code, youtube, giphy, table, textcolor',
+    plugins: 'link, image, code, youtube, giphy, table, textcolor, lists',
     extended_valid_elements : 'input[id|name|value|type|class|style|required|placeholder|autocomplete|onclick]',
     file_browser_callback: function(field_name, url, type, win) {
             if(type =='image'){

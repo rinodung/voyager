@@ -7,25 +7,48 @@ use Arrilot\Widgets\ServiceProvider as WidgetServiceProvider;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\AliasLoader;
+use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
-use Illuminate\Support\ServiceProvider;
 use Intervention\Image\ImageServiceProvider;
+use Larapack\DoctrineSupport\DoctrineSupportServiceProvider;
+use Larapack\VoyagerHooks\VoyagerHooksServiceProvider;
+use TCG\Voyager\Events\FormFieldsRegistered;
 use TCG\Voyager\Facades\Voyager as VoyagerFacade;
 use TCG\Voyager\FormFields\After\DescriptionHandler;
 use TCG\Voyager\Http\Middleware\VoyagerAdminMiddleware;
-use TCG\Voyager\Models\User;
+use TCG\Voyager\Models\MenuItem;
+use TCG\Voyager\Models\Setting;
+use TCG\Voyager\Policies\BasePolicy;
+use TCG\Voyager\Policies\MenuItemPolicy;
+use TCG\Voyager\Policies\SettingPolicy;
+use TCG\Voyager\Providers\VoyagerEventServiceProvider;
 use TCG\Voyager\Translator\Collection as TranslatorCollection;
 
 class VoyagerServiceProvider extends ServiceProvider
 {
     /**
+     * The policy mappings for the application.
+     *
+     * @var array
+     */
+    protected $policies = [
+        Setting::class  => SettingPolicy::class,
+        MenuItem::class => MenuItemPolicy::class,
+    ];
+
+    /**
      * Register the application services.
      */
     public function register()
     {
+        $this->app->register(VoyagerEventServiceProvider::class);
         $this->app->register(ImageServiceProvider::class);
         $this->app->register(WidgetServiceProvider::class);
+        $this->app->register(VoyagerHooksServiceProvider::class);
+        $this->app->register(DoctrineSupportServiceProvider::class);
 
         $loader = AliasLoader::getInstance();
         $loader->alias('Voyager', VoyagerFacade::class);
@@ -82,6 +105,8 @@ class VoyagerServiceProvider extends ServiceProvider
             $router->middleware('admin.user', VoyagerAdminMiddleware::class);
         }
 
+        $this->registerGates();
+
         $this->registerViewComposers();
 
         $event->listen('voyager.alerts.collecting', function () {
@@ -128,9 +153,11 @@ class VoyagerServiceProvider extends ServiceProvider
             return;
         }
 
+        $storage_disk = (!empty(config('voyager.storage.disk'))) ? config('voyager.storage.disk') : 'public';
+
         if (request()->has('fix-missing-storage-symlink') && !file_exists(public_path('storage'))) {
             $this->fixMissingStorageSymlink();
-        } elseif (!file_exists(public_path('storage'))) {
+        } elseif (!file_exists(public_path('storage')) && $storage_disk == 'public') {
             $alert = (new Alert('missing-storage-symlink', 'warning'))
                 ->title(__('voyager.error.symlink_missing_title'))
                 ->text(__('voyager.error.symlink_missing_text'))
@@ -237,10 +264,38 @@ class VoyagerServiceProvider extends ServiceProvider
         );
     }
 
+    public function registerGates()
+    {
+        // This try catch is necessary for the Package Auto-discovery
+        // otherwise it will throw an error because no database
+        // connection has been made yet.
+        try {
+            if (Schema::hasTable('data_types')) {
+                $dataType = VoyagerFacade::model('DataType');
+                $dataTypes = $dataType->get();
+
+                foreach ($dataTypes as $dataType) {
+                    $policyClass = BasePolicy::class;
+                    if (isset($dataType->policy_name) && $dataType->policy_name !== ''
+                        && class_exists($dataType->policy_name)) {
+                        $policyClass = $dataType->policy_name;
+                    }
+
+                    $this->policies[$dataType->model_name] = $policyClass;
+                }
+
+                $this->registerPolicies();
+            }
+        } catch (\PDOException $e) {
+            Log::error('No Database connection yet in VoyagerServiceProvider registerGates()');
+        }
+    }
+
     protected function registerFormFields()
     {
         $formFields = [
             'checkbox',
+            'color',
             'date',
             'file',
             'image',
@@ -257,6 +312,7 @@ class VoyagerServiceProvider extends ServiceProvider
             'text_area',
             'timestamp',
             'hidden',
+            'coordinates',
         ];
 
         foreach ($formFields as $formField) {
@@ -267,7 +323,7 @@ class VoyagerServiceProvider extends ServiceProvider
 
         VoyagerFacade::addAfterFormField(DescriptionHandler::class);
 
-        event('voyager.form-fields.registered');
+        event(new FormFieldsRegistered($formFields));
     }
 
     /**
